@@ -4,6 +4,7 @@
     android:id="@+id/activity_alarm_detail"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/colorLightGray"
     android:orientation="vertical"
     tools:context="com.newwesterndev.gpsalarm.AlarmDetailActivity">
 
