@@ -10,7 +10,7 @@
     <string name="list_destination_label">Destination:</string>
     <string name="list_radius_label">Alarm Radius:</string>
     <string name="list_vibrate_label">Vibrate:</string>
-    <string name="list_ringtone_label">Ringtone Label:</string>
+    <string name="list_ringtone_label">Ringtone Volume:</string>
     <string name="list_test">test text</string>
 
     <string name="off">OFF</string>

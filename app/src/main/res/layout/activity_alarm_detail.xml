@@ -5,83 +5,138 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/colorLightGray"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:orientation="vertical"
+    android:padding="0dp"
     tools:context="com.newwesterndev.gpsalarm.AlarmDetailActivity">
 
-    <TextView
-        style="@style/ListText"
-        android:text="@string/list_destination_label"/>
-
-    <EditText
-        android:id="@+id/detail_destination"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:elevation="8dp">
+
+        <com.google.android.gms.maps.MapView
+            android:id="@+id/mapView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="true"
+            android:elevation="8dp"
+            android:enabled="true" />
+
+        <ImageButton
+            android:id="@+id/zoom_in"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:elevation="16dp"
+            android:src="@drawable/ic_zoom_in_white_36dp" />
+
+        <ImageButton
+            android:id="@+id/zoom_out"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:elevation="16dp"
+            android:src="@drawable/ic_zoom_out_white_36dp"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <TextView
-            style="@style/ListText"
-            android:text="@string/list_radius_label"/>
-
-        <Spinner
-            android:id="@+id/distance_spinner"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <Spinner
-            android:id="@+id/distance_type_spinner"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <TextView
-            style="@style/ListText"
-            android:text="@string/list_vibrate_label"/>
-
-        <CheckBox
-            android:id="@+id/vibrate_check"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <TextView
-            style="@style/ListText"
-            android:text="@string/list_ringtone_label"/>
-
-        <SeekBar
-            android:layout_width="200dp"
-            android:layout_height="wrap_content" />
-
-    </LinearLayout>
-
-    <Button
+        android:id="@+id/details"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/colorAccent"
-        android:text="@string/detail_test"
-        android:textColor="@android:color/white"/>
+        android:layout_height="match_parent"
+        android:layout_marginEnd="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
 
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:background="@color/colorAccent"
-        android:text="@string/detail_create"
-        android:textColor="@android:color/white"/>
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2">
 
+            <TextView
+                style="@style/ListText"
+                android:text="@string/list_destination_label"/>
+
+            <EditText
+                android:id="@+id/detail_destination"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"/>
+
+
+            <TextView
+                style="@style/ListText"
+                android:text="@string/list_radius_label" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Spinner
+                    android:id="@+id/distance_spinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"/>
+
+                <Spinner
+                    android:id="@+id/distance_type_spinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"/>
+
+            </LinearLayout>
+
+            <TextView
+                style="@style/ListText"
+                android:text="@string/list_vibrate_label" />
+
+            <CheckBox
+                android:id="@+id/vibrate_check"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+
+            <TextView
+                style="@style/ListText"
+                android:text="@string/list_ringtone_label" />
+
+            <SeekBar
+                android:id="@+id/ringtone_volume"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content" />
+
+        </GridLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="24dp"
+            android:orientation="vertical">
+        <Button
+            android:id="@+id/test_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/colorAccent"
+            android:elevation="8dp"
+            android:text="@string/detail_test"
+            android:textColor="@android:color/white" />
+
+        <Button
+            android:id="@+id/create_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:background="@color/colorAccent"
+            android:elevation="8dp"
+            android:text="@string/detail_create"
+            android:textColor="@android:color/white" />
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>
