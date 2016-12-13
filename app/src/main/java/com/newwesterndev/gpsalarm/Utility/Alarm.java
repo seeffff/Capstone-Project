@@ -1,4 +1,4 @@
-package com.newwesterndev.gpsalarm.Utility;
+package com.newwesterndev.gpsalarm.utility;
 
 public class Alarm {
     private String mDestination;

@@ -1,7 +1,10 @@
 package com.newwesterndev.gpsalarm;
 
+import android.content.ContentValues;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
@@ -26,7 +29,8 @@ import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.newwesterndev.gpsalarm.Utility.Alarm;
+import com.newwesterndev.gpsalarm.database.AlarmContract;
+import com.newwesterndev.gpsalarm.utility.Alarm;
 
 import java.util.ArrayList;
 
@@ -49,6 +53,8 @@ public class AlarmDetailActivity extends AppCompatActivity implements
     @BindView(R.id.create_button) Button createButton;
     GoogleApiClient mGoogleApiClient;
     Location mLastLocation;
+    private static final String PROVIDER_NAME = "newwesterndev.alarmdatabase.alarms";
+    private static final Uri CONTENT_URI = Uri.parse("content://" + PROVIDER_NAME + "/alarms");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -127,8 +133,23 @@ public class AlarmDetailActivity extends AppCompatActivity implements
         int volume = ringtoneVolume.getProgress() / 10;
         double lon = mLastLocation.getLongitude();
         double lat = mLastLocation.getLatitude();
+        int vibrate = vibrate();
         String rangeString = distanceSpinner.getSelectedItem().toString();
         String rangeType = distanceTypeSpinner.getSelectedItem().toString();
+
+        ContentValues cv = new ContentValues();
+        cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_DESTINATION, destination);
+        cv.put(AlarmContract.AlarmsEntry.COLUMN_VOLUME, volume);
+        cv.put(AlarmContract.AlarmsEntry.COLUMN_LON, lon);
+        cv.put(AlarmContract.AlarmsEntry.COLUMN_LAT, lat);
+        cv.put(AlarmContract.AlarmsEntry.COLUMN_VIBRATE, vibrate);
+        cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_RANGE, rangeString);
+        cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_RANGE_TYPE, rangeType);
+        cv.put(AlarmContract.AlarmsEntry.COLUMN_IS_ACTIVE, 0);
+        getContentResolver().insert(CONTENT_URI, cv);
+
+        Intent i = new Intent(this, MainActivity.class);
+        startActivity(i);
 
         Alarm newAlarm = new Alarm(destination, 0, volume, vibrate(), lon, lat, Double.parseDouble(rangeString), rangeType);
     }
@@ -151,6 +172,8 @@ public class AlarmDetailActivity extends AppCompatActivity implements
         ranges.add(1D);
         ranges.add(2D);
         ranges.add(3D);
+        ranges.add(5D);
+        ranges.add(10D);
 
         ArrayAdapter<Double> rangeAdapter = new ArrayAdapter<Double>(this, R.layout.spinner_item, ranges);
         rangeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);

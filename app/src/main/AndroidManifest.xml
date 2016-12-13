@@ -22,9 +22,13 @@
         <activity android:name=".AlarmDetailActivity" />
         <activity android:name=".AddAlarmActivity"></activity>
 
+        <provider android:name=".database.AlarmProvider"
+            android:authorities="newwesterndev.alarmdatabase.alarms">
+        </provider>
+
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAJg1kP-VENpxpkvvuerZM33qt2o0cPN0A"/>
+            android:value="xxxxx"/>
     </application>
 
 </manifest>
