@@ -55,37 +55,12 @@ public class AlarmProvider extends ContentProvider{
         return cursor;
     }
 
-    public ArrayList<Alarm> getAlarms(Uri uri){
-        String table = getTableName(uri);
-        SQLiteDatabase database = dbHelper.getReadableDatabase();
-        ArrayList<Alarm> alarms = new ArrayList<Alarm>();
-        Cursor cursor = database.query(table, allColumns, null, null, null, null, null);
-
-        for (cursor.moveToLast(); !cursor.isBeforeFirst(); cursor.moveToPrevious()) {
-            long id = (cursor.getLong(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_ID)));
-            double range = (cursor.getDouble(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_ALARM_RANGE)));
-            String type = (cursor.getString(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_ALARM_RANGE_TYPE)));
-            String destination = (cursor.getString(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_ALARM_DESTINATION)));
-            int active = (cursor.getInt(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_IS_ACTIVE)));
-            int volume = (cursor.getInt(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_VOLUME)));
-            int vibrate = (cursor.getInt(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_VIBRATE)));
-            double lon = (cursor.getDouble(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_LON)));
-            double lat = (cursor.getDouble(cursor.getColumnIndex(AlarmContract.AlarmsEntry.COLUMN_LAT)));
-
-            Alarm alarm = new Alarm(destination, active, volume, vibrate, lon, lat, range, type, id);
-            alarms.add(alarm);
-        }
-
-        cursor.close();
-        return alarms;
-    }
-
     @Override
-    public int update(Uri uri, ContentValues values, String whereClause,
+    public int update(Uri uri, ContentValues values, String where,
                       String[] whereArgs) {
         String table = getTableName(uri);
         SQLiteDatabase database = dbHelper.getWritableDatabase();
-        return database.update(table, values, whereClause, whereArgs);
+        return database.update(table, values, where + " = ?", whereArgs);
     }
 
     public static String getTableName(Uri uri){

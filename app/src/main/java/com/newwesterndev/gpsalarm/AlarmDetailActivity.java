@@ -1,8 +1,11 @@
 package com.newwesterndev.gpsalarm;
 
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.graphics.Color;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
@@ -10,41 +13,72 @@ import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Html;
+import android.text.Spanned;
+import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.places.AutocompletePrediction;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.PlaceBuffer;
+import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.newwesterndev.gpsalarm.alarm.AlarmController;
 import com.newwesterndev.gpsalarm.database.AlarmContract;
 import com.newwesterndev.gpsalarm.utility.Alarm;
+import com.newwesterndev.gpsalarm.utility.PlacesAutocompleteAdapter;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnItemClick;
 
 public class AlarmDetailActivity extends AppCompatActivity implements
-        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback {
+        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
+        OnMapReadyCallback, AdapterView.OnItemClickListener {
 
     @BindView(R.id.mapView) MapView mapView;
     @BindView(R.id.zoom_in) ImageButton zoomInButton;
     @BindView(R.id.zoom_out) ImageButton zoomOutButton;
     @BindView(R.id.details) LinearLayout detailLayout;
-    @BindView(R.id.detail_destination) EditText destinationEdit;
+    @BindView(R.id.detail_destination) AutoCompleteTextView destinationAuto;
     @BindView(R.id.distance_spinner) Spinner distanceSpinner;
     @BindView(R.id.distance_type_spinner) Spinner distanceTypeSpinner;
     @BindView(R.id.vibrate_check) CheckBox vibrateCheck;
@@ -53,6 +87,9 @@ public class AlarmDetailActivity extends AppCompatActivity implements
     @BindView(R.id.create_button) Button createButton;
     GoogleApiClient mGoogleApiClient;
     Location mLastLocation;
+    LatLngBounds mBounds;
+    LatLng autoPlaceLatLng;
+    private PlacesAutocompleteAdapter mAdapter;
     private static final String PROVIDER_NAME = "newwesterndev.alarmdatabase.alarms";
     private static final Uri CONTENT_URI = Uri.parse("content://" + PROVIDER_NAME + "/alarms");
 
@@ -62,18 +99,15 @@ public class AlarmDetailActivity extends AppCompatActivity implements
         setContentView(R.layout.activity_alarm_detail);
         ButterKnife.bind(this);
 
+        final AlarmController alarmController = new AlarmController(this);
         populateSpinners();
-
-        if (mGoogleApiClient == null) {
-            mGoogleApiClient = new GoogleApiClient.Builder(this)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .addApi(LocationServices.API)
-                    .build();
-        }
 
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
+
+        mAdapter = new PlacesAutocompleteAdapter(this, mGoogleApiClient, mBounds, null);
+        destinationAuto.setAdapter(mAdapter);
+        destinationAuto.setOnItemClickListener(this);
 
         zoomInButton.setOnClickListener(view -> {
             detailLayout.setVisibility(View.GONE);
@@ -87,7 +121,75 @@ public class AlarmDetailActivity extends AppCompatActivity implements
             zoomInButton.setVisibility(View.VISIBLE);
         });
 
-        createButton.setOnClickListener(view -> createAlarm());
+        testButton.setOnClickListener(view -> {
+            String test = testButton.getText().toString();
+            String testString = getResources().getString(R.string.detail_test);
+            String stopString = getResources().getString(R.string.detail_stop);
+
+            int volume = ringtoneVolume.getProgress() / 10;
+
+            if (test.equals(testString)) {
+                createButton.setVisibility(View.GONE);
+                alarmController.playSound(volume, vibrateCheck.isChecked());
+                testButton.setText(R.string.detail_stop);
+            } else if (test.equals(stopString)) {
+                createButton.setVisibility(View.VISIBLE);
+                alarmController.stopSound();
+                testButton.setText(R.string.detail_stop);
+            }
+        });
+
+        distanceTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                String distance = distanceSpinner.getSelectedItem().toString();
+                String type = distanceTypeSpinner.getSelectedItem().toString();
+                double circleRadius = 0;
+
+                if(type.equals(getResources().getString(R.string.miles))){
+                    circleRadius = Double.parseDouble(distance)  * 1000 * 0.621371;
+                }else{
+                    circleRadius = Double.parseDouble(distance) * 1000;
+                }
+
+                final double finalCircle = circleRadius;
+
+                mapView.getMapAsync(googleMap -> {
+                    drawCircle(googleMap, finalCircle);
+                });
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+
+        distanceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                String distance = distanceSpinner.getSelectedItem().toString();
+                String type = distanceTypeSpinner.getSelectedItem().toString();
+                double circleRadius = 0;
+
+                if(type.equals(getResources().getString(R.string.miles))){
+                    circleRadius = Double.parseDouble(distance)  * 1000 * 0.621371;
+                }else{
+                    circleRadius = Double.parseDouble(distance) * 1000;
+                }
+
+                final double finalCircle = circleRadius;
+
+                mapView.getMapAsync(googleMap -> {
+                    drawCircle(googleMap, finalCircle);
+                });
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+
+                createButton.setOnClickListener(view -> createAlarm());
     }
 
     @Override
@@ -101,10 +203,29 @@ public class AlarmDetailActivity extends AppCompatActivity implements
             mapView.getMapAsync(googleMap -> {
                 googleMap.addMarker(new MarkerOptions().position(latLng));
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
+                drawCircle(googleMap, 402.336 / 3);
                 mapView.onResume();
             });
         }
 
+        mBounds = LatLngBounds.builder()
+                .include(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()))
+                .include(new LatLng(mLastLocation.getLatitude() - 10, mLastLocation.getLongitude() - 10))
+                .include(new LatLng(mLastLocation.getLatitude() + 10, mLastLocation.getLongitude() + 10))
+                .build();
+    }
+
+    public void drawCircle(GoogleMap googleMap, double finalCircle){
+        if(mLastLocation != null) {
+            LatLng latLng = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
+            googleMap.clear();
+            googleMap.addMarker(new MarkerOptions().position(latLng));
+            mapView.onResume();
+            Circle circle = googleMap.addCircle(new CircleOptions()
+                    .center(latLng)
+                    .strokeColor(Color.BLUE)
+                    .radius(finalCircle));
+        }
     }
 
     @Override
@@ -127,9 +248,9 @@ public class AlarmDetailActivity extends AppCompatActivity implements
         super.onStop();
     }
 
-    public void createAlarm(){
+    public void createAlarm() {
 
-        String destination = destinationEdit.getText().toString();
+        String destination = destinationAuto.getText().toString();
         int volume = ringtoneVolume.getProgress() / 10;
         double lon = mLastLocation.getLongitude();
         double lat = mLastLocation.getLatitude();
@@ -137,21 +258,24 @@ public class AlarmDetailActivity extends AppCompatActivity implements
         String rangeString = distanceSpinner.getSelectedItem().toString();
         String rangeType = distanceTypeSpinner.getSelectedItem().toString();
 
-        ContentValues cv = new ContentValues();
-        cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_DESTINATION, destination);
-        cv.put(AlarmContract.AlarmsEntry.COLUMN_VOLUME, volume);
-        cv.put(AlarmContract.AlarmsEntry.COLUMN_LON, lon);
-        cv.put(AlarmContract.AlarmsEntry.COLUMN_LAT, lat);
-        cv.put(AlarmContract.AlarmsEntry.COLUMN_VIBRATE, vibrate);
-        cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_RANGE, rangeString);
-        cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_RANGE_TYPE, rangeType);
-        cv.put(AlarmContract.AlarmsEntry.COLUMN_IS_ACTIVE, 0);
-        getContentResolver().insert(CONTENT_URI, cv);
+        if(destination.length() <= 30) {
 
-        Intent i = new Intent(this, MainActivity.class);
-        startActivity(i);
+            ContentValues cv = new ContentValues();
+            cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_DESTINATION, destination);
+            cv.put(AlarmContract.AlarmsEntry.COLUMN_VOLUME, volume);
+            cv.put(AlarmContract.AlarmsEntry.COLUMN_LON, lon);
+            cv.put(AlarmContract.AlarmsEntry.COLUMN_LAT, lat);
+            cv.put(AlarmContract.AlarmsEntry.COLUMN_VIBRATE, vibrate);
+            cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_RANGE, rangeString);
+            cv.put(AlarmContract.AlarmsEntry.COLUMN_ALARM_RANGE_TYPE, rangeType);
+            cv.put(AlarmContract.AlarmsEntry.COLUMN_IS_ACTIVE, 0);
+            getContentResolver().insert(CONTENT_URI, cv);
 
-        Alarm newAlarm = new Alarm(destination, 0, volume, vibrate(), lon, lat, Double.parseDouble(rangeString), rangeType);
+            Intent i = new Intent(this, MainActivity.class);
+            startActivity(i);
+        }else{
+            Toast.makeText(this, getResources().getString(R.string.detail_too_large), Toast.LENGTH_SHORT).show();
+        }
     }
 
     public int vibrate() {
@@ -162,7 +286,7 @@ public class AlarmDetailActivity extends AppCompatActivity implements
         }
     }
 
-    public void populateSpinners(){
+    public void populateSpinners() {
         ArrayList<Double> ranges = new ArrayList<>();
         ArrayList<String> rangeTypes = new ArrayList<>();
 
@@ -188,6 +312,60 @@ public class AlarmDetailActivity extends AppCompatActivity implements
     }
 
     @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+
+        final AutocompletePrediction item = mAdapter.getItem(position);
+        final String placeId = item.getPlaceId();
+        final CharSequence primaryText = item.getPrimaryText(null);
+
+        PendingResult<PlaceBuffer> placeResult = Places.GeoDataApi
+                .getPlaceById(mGoogleApiClient, placeId);
+        placeResult.setResultCallback(mUpdatePlaceDetailsCallback);
+
+        Toast.makeText(getApplicationContext(), "Clicked: " + primaryText,
+                Toast.LENGTH_SHORT).show();
+    }
+
+    private ResultCallback<PlaceBuffer> mUpdatePlaceDetailsCallback
+            = new ResultCallback<PlaceBuffer>() {
+        @Override
+        public void onResult(PlaceBuffer places) {
+            if (!places.getStatus().isSuccess()) {
+                // Request did not complete successfully
+                places.release();
+                return;
+            }
+            // Get the Place object from the buffer.
+            final Place place = places.get(0);
+
+            // Format details of the place for display and show it in a TextView.
+            destinationAuto.setText(place.getName());
+            LatLng autoLatLng = place.getLatLng();
+            mLastLocation.setLongitude(autoLatLng.longitude);
+            mLastLocation.setLatitude(autoLatLng.latitude);
+
+            String distance = distanceSpinner.getSelectedItem().toString();
+            String type = distanceTypeSpinner.getSelectedItem().toString();
+            double circleRadius = 0;
+
+            if(type.equals(getResources().getString(R.string.miles))){
+                circleRadius = Double.parseDouble(distance)  * 1000 * 0.621371;
+            }else{
+                circleRadius = Double.parseDouble(distance) * 1000;
+            }
+
+            final double finalCircle = circleRadius;
+
+            mapView.getMapAsync(googleMap -> {
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(autoLatLng, 15));
+                drawCircle(googleMap, finalCircle);
+            });
+
+            places.release();
+        }
+    };
+
+    @Override
     public void onConnectionSuspended(int i) {
 
     }
@@ -196,4 +374,5 @@ public class AlarmDetailActivity extends AppCompatActivity implements
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
     }
+
 }

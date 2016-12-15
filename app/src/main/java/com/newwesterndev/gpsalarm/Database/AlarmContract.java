@@ -36,6 +36,8 @@ public class AlarmContract {
         public static final String COLUMN_LON = "longitude";
         public static final String COLUMN_LAT = "latitude";
 
+        public static final String DEFAULT_SORT = COLUMN_ID + " DESC";
+
         public static final String[] allColumns =
                 {COLUMN_ID, COLUMN_ALARM_RANGE, COLUMN_ALARM_RANGE_TYPE, COLUMN_ALARM_DESTINATION, COLUMN_IS_ACTIVE,
                 COLUMN_VOLUME, COLUMN_VIBRATE, COLUMN_LON, COLUMN_LAT};

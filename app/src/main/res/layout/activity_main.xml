@@ -33,6 +33,7 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:elevation="8dp"
+        android:background="@color/colorPrimaryDark"
         android:src="@drawable/ic_alarm_add_white_36dp"/>
 
 </FrameLayout>

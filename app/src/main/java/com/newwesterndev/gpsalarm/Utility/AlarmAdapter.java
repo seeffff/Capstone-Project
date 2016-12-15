@@ -1,7 +1,10 @@
 package com.newwesterndev.gpsalarm.utility;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.drawable.TransitionDrawable;
 import android.net.Uri;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -11,15 +14,22 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.newwesterndev.gpsalarm.MainActivity;
 import com.newwesterndev.gpsalarm.R;
+import com.newwesterndev.gpsalarm.database.AlarmContract;
+import com.newwesterndev.gpsalarm.database.AlarmLoader;
+import com.newwesterndev.gpsalarm.database.AlarmProvider;
 
 import java.util.ArrayList;
 
 import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.COLUMN_ID;
+import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.COLUMN_IS_ACTIVE;
+import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.TABLE_NAME;
 
 public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
 
@@ -34,6 +44,7 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
         public SeekBar ringtoneBar;
         public Button activeButton;
         public ImageButton deleteButton;
+        public LinearLayout linearLayout;
 
         public ViewHolder(View itemView){
             super(itemView);
@@ -44,14 +55,16 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
             ringtoneBar = (SeekBar) itemView.findViewById(R.id.list_ringtone_seekbar);
             activeButton = (Button) itemView.findViewById(R.id.active_button);
             deleteButton = (ImageButton) itemView.findViewById(R.id.delete_button);
+            linearLayout = (LinearLayout) itemView.findViewById(R.id.linear_list);
         }
     }
 
     private ArrayList<Alarm> mAlarms;
     private Context mContext;
+    private Cursor mCursor, mActiveAlarms;
 
-    public AlarmAdapter(Context context, ArrayList<Alarm> alarms){
-        mAlarms = alarms;
+    public AlarmAdapter(Cursor cursor, Context context){
+        mCursor = cursor;
         mContext = context;
     }
 
@@ -60,8 +73,9 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
     }
 
     @Override
-    public int getItemCount() {
-        return mAlarms.size();
+    public long getItemId(int position){
+        mCursor.moveToPosition(position);
+        return mCursor.getLong(AlarmLoader.Query.COLUMN_ID);
     }
 
     @Override
@@ -77,9 +91,19 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
 
     @Override
     public void onBindViewHolder(AlarmAdapter.ViewHolder holder, int position) {
-        Alarm alarm = mAlarms.get(position);
+        mCursor.moveToPosition(position);
 
-        Log.e("Alarm details", alarm.getDestination());
+        long id = mCursor.getLong(AlarmLoader.Query.COLUMN_ID);
+        double range = mCursor.getDouble(AlarmLoader.Query.COLUMN_ALARM_RANGE);
+        String type = mCursor.getString(AlarmLoader.Query.COLUMN_ALARM_RANGE_TYPE);
+        String destination = mCursor.getString(AlarmLoader.Query.COLUMN_ALARM_DESTINATION);
+        int active = mCursor.getInt(AlarmLoader.Query.COLUMN_IS_ACTIVE);
+        int volume = mCursor.getInt(AlarmLoader.Query.COLUMN_VOLUME);
+        int vibrate = mCursor.getInt(AlarmLoader.Query.COLUMN_VIBRATE);
+        double lon = mCursor.getDouble(AlarmLoader.Query.COLUMN_LON);
+        double lat = mCursor.getDouble(AlarmLoader.Query.COLUMN_LAT);
+
+        Alarm alarm = new Alarm(destination, active, volume, vibrate, lon, lat, range, type, id);
 
         TextView destinationText = holder.destinationText;
         TextView radiusText = holder.radiusText;
@@ -87,15 +111,52 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
         SeekBar ringtoneSeek = holder.ringtoneBar;
         Button activeButton = holder.activeButton;
         ImageButton deleteButton = holder.deleteButton;
+        LinearLayout linearList = holder.linearLayout;
 
         destinationText.setText(alarm.getDestination());
         radiusText.setText(Double.toString(alarm.getRange()) + " " + alarm.getRangeType());
         if(alarm.getVibrate() == 1) vibrateCheck.setChecked(true);
         else vibrateCheck.setChecked(false);
+
+        if(alarm.getIsActive() == 1){
+            activeButton.setText(getContext().getResources().getString(R.string.on));
+            activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOn));
+            deleteButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
+            linearList.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
+            linearList.setElevation(8);
+            vibrateCheck.setEnabled(false);
+            ringtoneSeek.setEnabled(false);
+        }
         ringtoneSeek.setProgress(alarm.getVolume());
 
         activeButton.setOnClickListener(view -> {
 
+            String currentState = activeButton.getText().toString();
+
+            if(getActiveAlarms() == 1 && currentState.equals(getContext().getResources().getString(R.string.off))){
+                Toast.makeText(getContext(), "Only one alarm can be active at once!", Toast.LENGTH_SHORT).show();
+            } else {
+
+                setActive(alarm.getId(), currentState);
+
+                if (currentState.equals(getContext().getResources().getString(R.string.off))) {
+                    activeButton.setText(getContext().getResources().getString(R.string.on));
+                    activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOn));
+                    deleteButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
+                    linearList.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
+                    linearList.setElevation(8);
+                    vibrateCheck.setEnabled(false);
+                    ringtoneSeek.setEnabled(false);
+                } else {
+                    activeButton.setText(getContext().getResources().getString(R.string.off));
+                    activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorAccent));
+                    deleteButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorLightGray));
+                    linearList.setBackgroundColor(getContext().getResources().getColor(R.color.colorLightGray));
+                    linearList.setElevation(0);
+                    vibrateCheck.setEnabled(true);
+                    ringtoneSeek.setEnabled(true);
+                }
+            }
         });
 
         deleteButton.setOnClickListener(view -> {
@@ -105,5 +166,41 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(i);
         });
+    }
+
+    public int getActiveAlarms(){
+        int activeCount = 0;
+        Cursor mActiveAlarms = getContext().getContentResolver().query(CONTENT_URI,
+                new String[] {COLUMN_IS_ACTIVE}, COLUMN_IS_ACTIVE + " = ?", new String[] {"1"}, null);
+        if(mActiveAlarms.getCount() >= 1) {
+            mActiveAlarms.moveToFirst();
+            while (!mActiveAlarms.isAfterLast()) {
+                int activeState = mActiveAlarms.getInt(0);
+                if (activeState == 1) {
+                    activeCount++;
+                }
+                mActiveAlarms.moveToNext();
+            }
+        }
+        mActiveAlarms.close();
+        return activeCount;
+    }
+
+    @Override
+    public int getItemCount() {
+        return mCursor.getCount();
+    }
+
+    public void setActive(long id, String currentState){
+        String args[] = {String.valueOf(id)};
+        ContentValues cv = new ContentValues();
+        if(currentState.equals("OFF")){
+            Log.e("Inserted", "1");
+            cv.put(COLUMN_IS_ACTIVE, 1);
+        }else{
+            Log.e("Inserted", "0");
+            cv.put(COLUMN_IS_ACTIVE, 0);
+        }
+        getContext().getContentResolver().update(CONTENT_URI, cv, COLUMN_ID, args);
     }
 }

@@ -64,10 +64,15 @@
                 style="@style/ListText"
                 android:text="@string/list_destination_label"/>
 
-            <EditText
+            <!--<EditText-->
+                <!--android:id="@+id/detail_destination"-->
+                <!--android:layout_width="200dp"-->
+                <!--android:layout_height="wrap_content"/>-->
+
+            <AutoCompleteTextView
                 android:id="@+id/detail_destination"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:layout_width="200dp"/>
 
 
             <TextView

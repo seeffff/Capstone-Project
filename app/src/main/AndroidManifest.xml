@@ -3,7 +3,7 @@
     package="com.newwesterndev.gpsalarm">
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -20,15 +20,17 @@
             </intent-filter>
         </activity>
         <activity android:name=".AlarmDetailActivity" />
-        <activity android:name=".AddAlarmActivity"></activity>
+        <activity android:name=".AddAlarmActivity" />
 
-        <provider android:name=".database.AlarmProvider"
-            android:authorities="newwesterndev.alarmdatabase.alarms">
-        </provider>
+        <provider
+            android:name=".database.AlarmProvider"
+            android:authorities="newwesterndev.alarmdatabase.alarms"></provider>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="xxxxx"/>
+            android:value="xxxxxx" />
+
+        <activity android:name=".AlarmSoundActivity"></activity>
     </application>
 
 </manifest>

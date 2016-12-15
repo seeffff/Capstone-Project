@@ -15,7 +15,12 @@
 
     <string name="off">OFF</string>
     <string name="on">ON</string>
+    <string name="kilometers">kilometers</string>
+    <string name="miles">miles</string>
 
     <string name="detail_test">TEST</string>
+    <string name="detail_stop">STOP</string>
     <string name="detail_create">CREATE ALARM</string>
+
+    <string name="detail_too_large">Please keep your destination name under 15 characters!</string>
 </resources>
