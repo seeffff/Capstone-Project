@@ -21,6 +21,7 @@ import android.widget.Toast;
 
 import com.newwesterndev.gpsalarm.MainActivity;
 import com.newwesterndev.gpsalarm.R;
+import com.newwesterndev.gpsalarm.alarm.MonitorLocationService;
 import com.newwesterndev.gpsalarm.database.AlarmContract;
 import com.newwesterndev.gpsalarm.database.AlarmLoader;
 import com.newwesterndev.gpsalarm.database.AlarmProvider;
@@ -127,7 +128,7 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
             vibrateCheck.setEnabled(false);
             ringtoneSeek.setEnabled(false);
         }
-        ringtoneSeek.setProgress(alarm.getVolume());
+        ringtoneSeek.setProgress(alarm.getVolume() * 10);
 
         activeButton.setOnClickListener(view -> {
 
@@ -137,9 +138,25 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
                 Toast.makeText(getContext(), "Only one alarm can be active at once!", Toast.LENGTH_SHORT).show();
             } else {
 
+                Intent l = new Intent(getContext(), MonitorLocationService.class);
+
+                l.putExtra("Lon", alarm.getLon());
+                l.putExtra("Lat", alarm.getLat());
+                l.putExtra("Vol", alarm.getVolume());
+                l.putExtra("Range", alarm.getRange());
+                l.putExtra("Vib", alarm.getVibrate());
+                l.putExtra("Id", alarm.getId());
+
+                Log.e("Stuffs", "Lon is " + String.valueOf(alarm.getLon()) + " Lat is " + String.valueOf(alarm.getLat())
+                + " volume is " + alarm.getVolume() + " range is " + alarm.getVibrate() + " vib is " + alarm.getVibrate()
+                + " id is " + alarm.getId());
+
                 setActive(alarm.getId(), currentState);
 
                 if (currentState.equals(getContext().getResources().getString(R.string.off))) {
+
+                    getContext().startService(l);
+
                     activeButton.setText(getContext().getResources().getString(R.string.on));
                     activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOn));
                     deleteButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
@@ -148,6 +165,8 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
                     vibrateCheck.setEnabled(false);
                     ringtoneSeek.setEnabled(false);
                 } else {
+                    getContext().stopService(l);
+
                     activeButton.setText(getContext().getResources().getString(R.string.off));
                     activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorAccent));
                     deleteButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorLightGray));

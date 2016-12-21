@@ -6,5 +6,6 @@
     <color name="colorAccent">#00BCD4</color>
 
     <color name="colorOn">#F44336</color>
+    <color name="colorOnBackTrans">#50FFCDD2</color>
     <color name="colorOnBackground">#FFCDD2</color>
 </resources>

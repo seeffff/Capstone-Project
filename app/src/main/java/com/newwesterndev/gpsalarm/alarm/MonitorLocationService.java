@@ -16,7 +16,7 @@ import android.util.Log;
 
 
 public class MonitorLocationService extends Service {
-    private static final String TAG = "GPSTEST";
+    private static final String TAG = "GPS_SERVICE";
     private LocationManager mLocationManager = null;
     private static final int LOCATION_INTERVAL = 1000;
     private static final int LOCATION_DISTANCE = 0;
@@ -25,6 +25,7 @@ public class MonitorLocationService extends Service {
     private static int alarmVolume;
     private static double alarmRange;
     private static int alarmVib;
+    private static long alarmId;
     private Context mContext;
 
     private class LocationListener implements android.location.LocationListener {
@@ -50,13 +51,16 @@ public class MonitorLocationService extends Service {
 
                 AlarmManager alarmManager = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
                 int alarmType = AlarmManager.ELAPSED_REALTIME_WAKEUP;
-                long timeOrLengthofWait = 1000;
+                long timeOrLengthOfWait = 1000;
+
                 Intent i = new Intent(getApplicationContext(), AlarmReceiver.class);
 
                 i.putExtra("Vol", alarmVolume);
                 i.putExtra("Vib", alarmVib);
+                i.putExtra("Id", alarmId);
+
                 PendingIntent alarmIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, i, 0);
-                alarmManager.set(alarmType, timeOrLengthofWait, alarmIntent);
+                alarmManager.set(alarmType, timeOrLengthOfWait, alarmIntent);
 
                 onDestroy();
             }
@@ -92,7 +96,7 @@ public class MonitorLocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
+        Log.e("start", "started");
         mContext = this;
 
         double lon = intent.getDoubleExtra("Lon", 0);
@@ -100,6 +104,7 @@ public class MonitorLocationService extends Service {
         alarmRange = intent.getDoubleExtra("Range", 0);
         alarmVolume = intent.getIntExtra("Vol", 0);
         alarmVib = intent.getIntExtra("Vib", 0);
+        alarmId = intent.getLongExtra("Id", 0);
 
         alarmStop.setLatitude(lat);
         alarmStop.setLongitude(lon);
@@ -146,6 +151,8 @@ public class MonitorLocationService extends Service {
         }
 
         Location location = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+
+        if(location != null)
         Log.e("Location", "Lat " + Double.toString(location.getLatitude()) + "Long " + Double.toString(location.getLongitude()));
 
     }
@@ -167,7 +174,6 @@ public class MonitorLocationService extends Service {
     }
 
     private void initializeLocationManager() {
-        Log.e(TAG, "initializeLocationManager");
         if (mLocationManager == null) {
             mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         }

@@ -53,22 +53,10 @@ import com.newwesterndev.gpsalarm.alarm.AlarmController;
 import com.newwesterndev.gpsalarm.database.AlarmContract;
 import com.newwesterndev.gpsalarm.utility.Alarm;
 import com.newwesterndev.gpsalarm.utility.PlacesAutocompleteAdapter;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import butterknife.OnItemClick;
 
 public class AlarmDetailActivity extends AppCompatActivity implements
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
@@ -101,6 +89,15 @@ public class AlarmDetailActivity extends AppCompatActivity implements
 
         final AlarmController alarmController = new AlarmController(this);
         populateSpinners();
+
+        if (mGoogleApiClient == null) {
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .addApi(Places.GEO_DATA_API)
+                    .build();
+        }
 
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
@@ -135,7 +132,7 @@ public class AlarmDetailActivity extends AppCompatActivity implements
             } else if (test.equals(stopString)) {
                 createButton.setVisibility(View.VISIBLE);
                 alarmController.stopSound();
-                testButton.setText(R.string.detail_stop);
+                testButton.setText(R.string.detail_test);
             }
         });
 
@@ -199,6 +196,7 @@ public class AlarmDetailActivity extends AppCompatActivity implements
                 ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
                     mGoogleApiClient);
+            
             LatLng latLng = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
             mapView.getMapAsync(googleMap -> {
                 googleMap.addMarker(new MarkerOptions().position(latLng));
@@ -210,8 +208,8 @@ public class AlarmDetailActivity extends AppCompatActivity implements
 
         mBounds = LatLngBounds.builder()
                 .include(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()))
-                .include(new LatLng(mLastLocation.getLatitude() - 10, mLastLocation.getLongitude() - 10))
-                .include(new LatLng(mLastLocation.getLatitude() + 10, mLastLocation.getLongitude() + 10))
+                .include(new LatLng(mLastLocation.getLatitude() - 2, mLastLocation.getLongitude() - 2))
+                .include(new LatLng(mLastLocation.getLatitude() + 2, mLastLocation.getLongitude() + 2))
                 .build();
     }
 
@@ -223,7 +221,9 @@ public class AlarmDetailActivity extends AppCompatActivity implements
             mapView.onResume();
             Circle circle = googleMap.addCircle(new CircleOptions()
                     .center(latLng)
-                    .strokeColor(Color.BLUE)
+                    .strokeColor(getResources().getColor(R.color.colorOn))
+                    .strokeWidth(3)
+                    .fillColor(getResources().getColor(R.color.colorOnBackTrans))
                     .radius(finalCircle));
         }
     }
@@ -235,6 +235,7 @@ public class AlarmDetailActivity extends AppCompatActivity implements
             googleMap.addMarker(new MarkerOptions().position(latLng));
             mLastLocation.setLatitude(latLng.latitude);
             mLastLocation.setLongitude(latLng.longitude);
+            drawCircle(googleMap, 402.336 / 3);
         });
     }
 
@@ -349,7 +350,7 @@ public class AlarmDetailActivity extends AppCompatActivity implements
             double circleRadius = 0;
 
             if(type.equals(getResources().getString(R.string.miles))){
-                circleRadius = Double.parseDouble(distance)  * 1000 * 0.621371;
+                circleRadius = Double.parseDouble(distance)  * 1000 / 0.621371;
             }else{
                 circleRadius = Double.parseDouble(distance) * 1000;
             }
