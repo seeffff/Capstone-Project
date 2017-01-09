@@ -1,11 +1,18 @@
 package com.newwesterndev.gpsalarm.utility;
 
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.drawable.TransitionDrawable;
+import android.location.LocationManager;
 import android.net.Uri;
+import android.provider.Settings;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,17 +26,24 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.InterstitialAd;
 import com.newwesterndev.gpsalarm.MainActivity;
 import com.newwesterndev.gpsalarm.R;
 import com.newwesterndev.gpsalarm.alarm.MonitorLocationService;
 import com.newwesterndev.gpsalarm.database.AlarmContract;
 import com.newwesterndev.gpsalarm.database.AlarmLoader;
 import com.newwesterndev.gpsalarm.database.AlarmProvider;
+import com.newwesterndev.gpsalarm.widget.AlarmWidget;
 
 import java.util.ArrayList;
 
+import static android.content.Context.MODE_PRIVATE;
 import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.COLUMN_ID;
 import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.COLUMN_IS_ACTIVE;
+import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.COLUMN_VIBRATE;
+import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.COLUMN_VOLUME;
+import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.CONTENT_URI;
 import static com.newwesterndev.gpsalarm.database.AlarmContract.AlarmsEntry.TABLE_NAME;
 
 public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
@@ -60,13 +74,18 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
         }
     }
 
-    private ArrayList<Alarm> mAlarms;
     private Context mContext;
-    private Cursor mCursor, mActiveAlarms;
+    private Cursor mCursor;
+    private InterstitialAd mInterstitialAd;
+    public static final String ALARM_ID_PREFERENCES = "AlarmId";
 
     public AlarmAdapter(Cursor cursor, Context context){
         mCursor = cursor;
         mContext = context;
+
+        mInterstitialAd = new InterstitialAd(getContext());
+        mInterstitialAd.setAdUnitId("ca-app-pub-3940256099942544/1033173712");
+        requestNewInterstitial();
     }
 
     private Context getContext(){
@@ -106,6 +125,8 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
 
         Alarm alarm = new Alarm(destination, active, volume, vibrate, lon, lat, range, type, id);
 
+        Log.e("Id's in adapter", String.valueOf(alarm.getId()));
+
         TextView destinationText = holder.destinationText;
         TextView radiusText = holder.radiusText;
         CheckBox vibrateCheck = holder.vibrateCheck;
@@ -122,8 +143,7 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
         if(alarm.getIsActive() == 1){
             activeButton.setText(getContext().getResources().getString(R.string.on));
             activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOn));
-            deleteButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
-            linearList.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
+            activeBackground(linearList, true);
             linearList.setElevation(8);
             vibrateCheck.setEnabled(false);
             ringtoneSeek.setEnabled(false);
@@ -132,58 +152,58 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
 
         activeButton.setOnClickListener(view -> {
 
+            boolean locationEnabled = testLocationService();
+
             String currentState = activeButton.getText().toString();
 
-            if(getActiveAlarms() == 1 && currentState.equals(getContext().getResources().getString(R.string.off))){
-                Toast.makeText(getContext(), "Only one alarm can be active at once!", Toast.LENGTH_SHORT).show();
-            } else {
-
-                Intent l = new Intent(getContext(), MonitorLocationService.class);
-
-                l.putExtra("Lon", alarm.getLon());
-                l.putExtra("Lat", alarm.getLat());
-                l.putExtra("Vol", alarm.getVolume());
-                l.putExtra("Range", alarm.getRange());
-                l.putExtra("Vib", alarm.getVibrate());
-                l.putExtra("Id", alarm.getId());
-
-                Log.e("Stuffs", "Lon is " + String.valueOf(alarm.getLon()) + " Lat is " + String.valueOf(alarm.getLat())
-                + " volume is " + alarm.getVolume() + " range is " + alarm.getVibrate() + " vib is " + alarm.getVibrate()
-                + " id is " + alarm.getId());
-
-                setActive(alarm.getId(), currentState);
-
-                if (currentState.equals(getContext().getResources().getString(R.string.off))) {
-
-                    getContext().startService(l);
-
-                    activeButton.setText(getContext().getResources().getString(R.string.on));
-                    activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOn));
-                    deleteButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
-                    linearList.setBackgroundColor(getContext().getResources().getColor(R.color.colorOnBackground));
-                    linearList.setElevation(8);
-                    vibrateCheck.setEnabled(false);
-                    ringtoneSeek.setEnabled(false);
+            if(locationEnabled) {
+                if (getActiveAlarms() == 1 && currentState.equals(getContext().getResources().getString(R.string.off))) {
+                    Toast.makeText(getContext(), getContext().getResources().getString(R.string.multiple_alarms), Toast.LENGTH_SHORT).show();
                 } else {
-                    getContext().stopService(l);
+                    Intent l = new Intent(getContext(), MonitorLocationService.class);
 
-                    activeButton.setText(getContext().getResources().getString(R.string.off));
-                    activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorAccent));
-                    deleteButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorLightGray));
-                    linearList.setBackgroundColor(getContext().getResources().getColor(R.color.colorLightGray));
-                    linearList.setElevation(0);
-                    vibrateCheck.setEnabled(true);
-                    ringtoneSeek.setEnabled(true);
+                    l.putExtra("Dest", alarm.getDestination());
+                    l.putExtra("Lon", alarm.getLon());
+                    l.putExtra("Lat", alarm.getLat());
+                    l.putExtra("Vol", alarm.getVolume());
+                    l.putExtra("Range", alarm.getRange());
+                    l.putExtra("Vib", alarm.getVibrate());
+
+                    updateVolumeVibrate(alarm.getId(), alarm.getVolume(), alarm.getVibrate());
+                    setActive(alarm.getId(), currentState);
+                    updateWidget();
+
+                    if (currentState.equals(getContext().getResources().getString(R.string.off))) {
+
+                        setAlarmDetails(alarm.getId(), alarm.getVolume(), alarm.getVibrate());
+                        getContext().startService(l);
+
+                        activeButton.setText(getContext().getResources().getString(R.string.on));
+                        activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorOn));
+                        activeBackground(linearList, true);
+                        linearList.setElevation(8);
+                        vibrateCheck.setEnabled(false);
+                        ringtoneSeek.setEnabled(false);
+                    } else {
+                        adHandler();
+                        getContext().stopService(l);
+
+                        activeButton.setText(getContext().getResources().getString(R.string.off));
+                        activeButton.setBackgroundColor(getContext().getResources().getColor(R.color.colorAccent));
+                        activeBackground(linearList, false);
+                        linearList.setElevation(0);
+                        vibrateCheck.setEnabled(true);
+                        ringtoneSeek.setEnabled(true);
+                    }
                 }
+            } else {
+                Toast.makeText(getContext(), getContext().getResources().getString(R.string.location_not_enabled), Toast.LENGTH_LONG).show();
             }
         });
 
+
         deleteButton.setOnClickListener(view -> {
-            String args[] = {String.valueOf(alarm.getId())};
-            getContext().getContentResolver().delete(CONTENT_URI, COLUMN_ID, args);
-            Intent i = new Intent(getContext(), MainActivity.class);
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            getContext().startActivity(i);
+            deleteDialog(alarm);
         });
     }
 
@@ -205,6 +225,55 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
         return activeCount;
     }
 
+    private void setAlarmDetails(long id, int volume, int vibrate){
+        SharedPreferences prefs = getContext().getSharedPreferences(ALARM_ID_PREFERENCES, MODE_PRIVATE);
+        SharedPreferences.Editor prefsEditor = prefs.edit();
+        prefsEditor.putLong("Id", id);
+        prefsEditor.putInt("Vol", volume);
+        prefsEditor.putInt("Vib", vibrate);
+        prefsEditor.apply();
+    }
+
+    private void updateVolumeVibrate(long id, int volume, int vibrate){
+        String args[] = {String.valueOf(id)};
+        ContentValues cv = new ContentValues();
+        cv.put(COLUMN_VOLUME, volume);
+        cv.put(COLUMN_VIBRATE, vibrate);
+        getContext().getContentResolver().update(CONTENT_URI, cv, COLUMN_ID, args);
+    }
+
+    public void adHandler(){
+            if (mInterstitialAd.isLoaded()) {
+                mInterstitialAd.show();
+                mInterstitialAd = new InterstitialAd(getContext());
+                mInterstitialAd.setAdUnitId("ca-app-pub-3940256099942544/1033173712");
+                requestNewInterstitial();
+            }
+    }
+
+    public boolean testLocationService() {
+        LocationManager lm = (LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
+        boolean gpsEnabled = false;
+        boolean networkEnabled = false;
+        boolean bothEnabled = false;
+
+        try {
+            gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        } catch (Exception ex) {
+        }
+
+        try {
+            networkEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception ex) {
+        }
+
+        if(gpsEnabled && networkEnabled){
+            bothEnabled = true;
+        }
+
+        return bothEnabled;
+    }
+
     @Override
     public int getItemCount() {
         return mCursor.getCount();
@@ -221,5 +290,61 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
             cv.put(COLUMN_IS_ACTIVE, 0);
         }
         getContext().getContentResolver().update(CONTENT_URI, cv, COLUMN_ID, args);
+    }
+
+    private void requestNewInterstitial() {
+        AdRequest adRequest = new AdRequest.Builder()
+                .addTestDevice(AdRequest.DEVICE_ID_EMULATOR)
+                .build();
+
+        mInterstitialAd.loadAd(adRequest);
+    }
+
+    private void deleteDialog(Alarm alarm){
+
+        new android.app.AlertDialog.Builder(getContext())
+                .setTitle(R.string.dialog_delete_title)
+                .setMessage(R.string.dialog_delete_text)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                        String args[] = {String.valueOf(alarm.getId())};
+                        getContext().getContentResolver().delete(CONTENT_URI, COLUMN_ID, args);
+                        Intent j = new Intent(getContext(), MainActivity.class);
+                        j.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        getContext().startActivity(j);
+
+                        Intent k = new Intent(getContext(), MainActivity.class);
+                        k.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        getContext().startActivity(k);
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        return;
+                    }
+                })
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+
+    private void updateWidget(){
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(getContext());
+        int[] appWidgetIds = appWidgetManager.getAppWidgetIds(new ComponentName(getContext(), AlarmWidget.class));
+        if (appWidgetIds.length > 0) {
+            new AlarmWidget().onUpdate(getContext(), appWidgetManager, appWidgetIds);
+        }
+    }
+
+    public void activeBackground(LinearLayout li, boolean isNowActive){
+
+        TransitionDrawable transition = (TransitionDrawable) li.getBackground();
+        if(isNowActive) {
+            transition.startTransition(250);
+        }else{
+            transition.reverseTransition(250);
+        }
     }
 }

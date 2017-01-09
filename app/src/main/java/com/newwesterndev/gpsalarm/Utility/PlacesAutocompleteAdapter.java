@@ -28,6 +28,9 @@ import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 
 /**
+ *
+ * NOTE TO REVIEWER : THIS CODE WAS ESSENTIALLY ALL TAKEN FROM GOOGLE'S GITHUB
+ *
  * Adapter that handles Autocomplete requests from the Places Geo Data API.
  * {@link AutocompletePrediction} results from the API are frozen and stored directly in this
  * adapter. (See {@link AutocompletePrediction#freeze()}.)

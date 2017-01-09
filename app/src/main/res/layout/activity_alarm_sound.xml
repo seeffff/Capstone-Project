@@ -24,6 +24,7 @@
         android:background="@color/colorAccent"
         android:layout_height="wrap_content"
         android:layout_width="match_parent"
-        android:text="@string/sound_button"/>
+        android:text="@string/sound_button"
+        android:contentDescription="@string/cd_stop"/>
 
 </LinearLayout>

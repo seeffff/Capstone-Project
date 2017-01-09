@@ -1,12 +1,14 @@
 package com.newwesterndev.gpsalarm;
 
 import android.Manifest;
+import android.app.ActivityOptions;
 import android.app.LoaderManager;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 
@@ -14,7 +16,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.transition.Fade;
+import android.transition.Transition;
 import android.util.Log;
+import android.view.View;
+import android.widget.ImageView;
 
 import com.newwesterndev.gpsalarm.utility.AlarmAdapter;
 
@@ -27,6 +33,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
     @BindView(R.id.alarm_list) RecyclerView recyclerView;
     @BindView(R.id.new_alarm_fab) FloatingActionButton fab;
+    @BindView(R.id.new_alarm_image) ImageView newAlarmImage;
     private static final int CURSOR_LOADER_ID = 0;
     private static final String PROVIDER_NAME = "newwesterndev.alarmdatabase.alarms";
     private static final Uri CONTENT_URI = Uri.parse("content://" + PROVIDER_NAME + "/alarms");
@@ -36,6 +43,11 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+
+        Intent postAlarm = getIntent();
+        if(postAlarm.getStringExtra("KillMe") != null){
+            this.finishAffinity();
+        }
 
         if(savedInstanceState != null){
             getLoaderManager().restartLoader(CURSOR_LOADER_ID, null, this);
@@ -48,8 +60,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         }, 10);
 
         fab.setOnClickListener(view -> {
-            Intent i = new Intent(this, AlarmDetailActivity.class);
-            startActivity(i);
+            fadeOut();
         });
     }
 
@@ -68,10 +79,23 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setHasFixedSize(true);
         recyclerView.setAdapter(adapter);
+        if(adapter.getItemCount() != 0){
+            newAlarmImage.setVisibility(View.GONE);
+        }
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         recyclerView.setAdapter(null);
+    }
+
+    public void fadeOut(){
+
+            Transition exitTrans = new Fade(Fade.OUT);
+            getWindow().setExitTransition(exitTrans);
+            exitTrans.setDuration(400);
+            ActivityOptions options = ActivityOptions.makeSceneTransitionAnimation(MainActivity.this);
+            Intent i = new Intent(MainActivity.this, AlarmDetailActivity.class);
+            startActivity(i, options.toBundle());
     }
 }

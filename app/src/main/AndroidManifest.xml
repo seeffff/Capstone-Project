@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
@@ -35,13 +35,26 @@
 
         <provider
             android:name=".database.AlarmProvider"
-            android:authorities="newwesterndev.alarmdatabase.alarms"></provider>
+            android:authorities="newwesterndev.alarmdatabase.alarms" />
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="xxxxxx" />
+            android:value="x" />
 
-        <activity android:name=".AlarmSoundActivity"></activity>
+        <activity android:name=".AlarmSoundActivity" />
+
+        <receiver android:name=".widget.AlarmWidget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/alarm_widget_info" />
+        </receiver>
+
+        <service android:name=".widget.AlarmWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
     </application>
 
 </manifest>

@@ -1,11 +1,14 @@
 package com.newwesterndev.gpsalarm.alarm;
 
 import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
@@ -14,6 +17,9 @@ import android.os.IBinder;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 
+import com.newwesterndev.gpsalarm.MainActivity;
+import com.newwesterndev.gpsalarm.R;
+
 
 public class MonitorLocationService extends Service {
     private static final String TAG = "GPS_SERVICE";
@@ -21,12 +27,10 @@ public class MonitorLocationService extends Service {
     private static final int LOCATION_INTERVAL = 1000;
     private static final int LOCATION_DISTANCE = 0;
     private static Location alarmStop = new Location("alarm stop");
-    private static String stopName;
-    private static int alarmVolume;
     private static double alarmRange;
-    private static int alarmVib;
-    private static long alarmId;
+    private static String alarmDestination;
     private Context mContext;
+    private NotificationManager mNotificationManager;
 
     private class LocationListener implements android.location.LocationListener {
         Location mLastLocation;
@@ -54,11 +58,6 @@ public class MonitorLocationService extends Service {
                 long timeOrLengthOfWait = 1000;
 
                 Intent i = new Intent(getApplicationContext(), AlarmReceiver.class);
-
-                i.putExtra("Vol", alarmVolume);
-                i.putExtra("Vib", alarmVib);
-                i.putExtra("Id", alarmId);
-
                 PendingIntent alarmIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, i, 0);
                 alarmManager.set(alarmType, timeOrLengthOfWait, alarmIntent);
 
@@ -102,16 +101,19 @@ public class MonitorLocationService extends Service {
         double lon = intent.getDoubleExtra("Lon", 0);
         double lat = intent.getDoubleExtra("Lat", 0);
         alarmRange = intent.getDoubleExtra("Range", 0);
-        alarmVolume = intent.getIntExtra("Vol", 0);
-        alarmVib = intent.getIntExtra("Vib", 0);
-        alarmId = intent.getLongExtra("Id", 0);
+        alarmDestination = intent.getStringExtra("Dest");
+
+        if(alarmDestination == null){
+            alarmDestination = "null";
+        }
 
         alarmStop.setLatitude(lat);
         alarmStop.setLongitude(lon);
 
-        stopName = intent.getStringExtra("Stop");
+        showNotification();
 
         Log.e(TAG, "onStartCommand");
+        onCreate();
         super.onStartCommand(intent, flags, startId);
         return START_STICKY;
     }
@@ -142,11 +144,9 @@ public class MonitorLocationService extends Service {
             Log.d(TAG, "network provider does not exist, " + ex.getMessage());
         }
 
-        Context con = this;
-
         if ( Build.VERSION.SDK_INT >= 23 &&
-                ContextCompat.checkSelfPermission( con, android.Manifest.permission.ACCESS_FINE_LOCATION ) != PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission( con, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION ) != PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return  ;
         }
 
@@ -159,18 +159,38 @@ public class MonitorLocationService extends Service {
 
     @Override
     public void onDestroy() {
-        Log.e(TAG, "onDestroy");
-        super.onDestroy();
+        mNotificationManager.cancel(1);
         if (mLocationManager != null) {
             for (int i = 0; i < mLocationListeners.length; i++) {
                 try {
                     mLocationManager.removeUpdates(mLocationListeners[i]);
                 } catch (SecurityException ex) {
-                    Log.i(TAG, "fail to remove location listners, ignore", ex);
+                    Log.i(TAG, "fail to remove location listeners, ignore", ex);
                 }
             }
         }
         super.onDestroy();
+    }
+
+    private void showNotification() {
+        mNotificationManager = (NotificationManager) getSystemService(Service.NOTIFICATION_SERVICE);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
+
+        Notification.Builder builder = new Notification.Builder(this);
+
+        builder.setAutoCancel(false);
+        builder.setContentTitle(getResources().getString(R.string.app_name));
+        builder.setContentText(getResources().getString(R.string.notif_text) + " " +
+        alarmDestination + " " + getResources().getString(R.string.notif_text_two));
+        builder.setSmallIcon(R.drawable.ic_stat_notify_icon);
+        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher));
+        builder.setContentIntent(pendingIntent);
+        builder.setOngoing(true);
+        builder.build();
+
+        Notification notification = builder.getNotification();
+        notification.flags = Notification.FLAG_ONGOING_EVENT;
+        mNotificationManager.notify(1, notification);
     }
 
     private void initializeLocationManager() {

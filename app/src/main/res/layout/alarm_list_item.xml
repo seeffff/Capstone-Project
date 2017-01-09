@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:id="@+id/linear_list"
-    android:background="@color/colorLightGray"
+    android:background="@drawable/list_item_transition"
     android:paddingLeft="5dp"
     android:paddingStart="5dp"
     android:orientation="vertical">
@@ -15,27 +15,29 @@
 
         <TextView
             android:id="@+id/list_destination_label"
-            style="@style/ListText"
+            style="@style/ListHeadText"
             android:text="@string/list_destination_label"/>
 
         <TextView
             android:id="@+id/list_destination_text"
             style="@style/ListText"
-            android:text="@string/list_test"/>
+            android:text="@string/list_test"
+            android:contentDescription="@string/cd_list_destination"/>
 
         <TextView
             android:id="@+id/list_radius_label"
-            style="@style/ListText"
+            style="@style/ListHeadText"
             android:text="@string/list_radius_label"/>
 
         <TextView
             android:id="@+id/list_radius_text"
             style="@style/ListText"
-            android:text="@string/list_test"/>
+            android:text="@string/list_test"
+            android:contentDescription="@string/cd_list_radius"/>
 
         <TextView
             android:id="@+id/list_vibrate_label"
-            style="@style/ListText"
+            style="@style/ListHeadText"
             android:text="@string/list_vibrate_label"/>
 
         <CheckBox
@@ -43,11 +45,12 @@
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"
             android:gravity="center_vertical"
-            android:layout_columnWeight="4"/>
+            android:layout_columnWeight="4"
+            android:contentDescription="@string/cd_list_vibrate"/>
 
         <TextView
             android:id="@+id/list_ringtone_label"
-            style="@style/ListText"
+            style="@style/ListHeadText"
             android:text="@string/list_ringtone_label"/>
 
         <SeekBar
@@ -57,7 +60,8 @@
             android:layout_gravity="center_vertical"
             android:paddingEnd="32dp"
             android:paddingRight="32dp"
-            android:layout_columnWeight="4"/>
+            android:layout_columnWeight="4"
+            android:contentDescription="@string/cd_list_volume"/>
 
     </GridLayout>
 
@@ -70,8 +74,12 @@
             android:id="@+id/delete_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_gravity="center"
             android:layout_weight="5"
-            android:src="@drawable/ic_delete_forever_white_36dp"/>
+            android:src="@drawable/ic_delete_forever_black_36dp"
+            android:background="@android:color/transparent"
+            android:elevation="8dp"
+            android:contentDescription="@string/cd_list_delete"/>
 
         <Button
             android:id="@+id/active_button"
@@ -79,9 +87,12 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginBottom="8dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginRight="16dp"
             android:background="@color/colorAccent"
             android:elevation="8dp"
-            android:text="@string/off"/>
+            android:text="@string/off"
+            android:contentDescription="@string/cd_list_activate"/>
 
 
     </LinearLayout>
