@@ -3,10 +3,12 @@ package com.newwesterndev.gpsalarm;
 import android.Manifest;
 import android.app.ActivityOptions;
 import android.app.LoaderManager;
+import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.support.design.widget.FloatingActionButton;
@@ -21,6 +23,7 @@ import android.transition.Transition;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.newwesterndev.gpsalarm.utility.AlarmAdapter;
 
@@ -60,7 +63,11 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         }, 10);
 
         fab.setOnClickListener(view -> {
-            fadeOut();
+            if(testServices()) {
+                fadeOut();
+            } else{
+                Toast.makeText(this, getResources().getString(R.string.location_disabled),Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -97,5 +104,28 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
             ActivityOptions options = ActivityOptions.makeSceneTransitionAnimation(MainActivity.this);
             Intent i = new Intent(MainActivity.this, AlarmDetailActivity.class);
             startActivity(i, options.toBundle());
+    }
+
+    public boolean testServices() {
+        LocationManager lm = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        boolean gpsEnabled = false;
+        boolean networkEnabled = false;
+        boolean locationEnabled = false;
+
+        try {
+            gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        } catch (Exception ex) {
+        }
+
+        try {
+            networkEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception ex) {
+        }
+
+        if (gpsEnabled && networkEnabled) {
+            locationEnabled = true;
+        }
+
+        return locationEnabled;
     }
 }

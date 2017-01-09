@@ -23,9 +23,8 @@
     <string name="sound_message">You are within range of your destination!</string>
     <string name="sound_button">STOP</string>
 
-    <string name="location_not_enabled">We need to get your location to start an alarm! Please enable your
-    location services in your settings.</string>
     <string name="multiple_alarms">Only one alarm can be active at once!</string>
+    <string name="location_disabled">Please enable your location services in settings!</string>
     <string name="pausing_four">Resetting...</string>
     <string name="ready">Ready!</string>
 
