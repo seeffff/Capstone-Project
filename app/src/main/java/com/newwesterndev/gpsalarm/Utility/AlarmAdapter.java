@@ -197,7 +197,7 @@ public class AlarmAdapter extends RecyclerView.Adapter<AlarmAdapter.ViewHolder>{
                     }
                 }
             } else {
-                Toast.makeText(getContext(), getContext().getResources().getString(R.string.location_not_enabled), Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), getContext().getResources().getString(R.string.location_disabled), Toast.LENGTH_LONG).show();
             }
         });
 
