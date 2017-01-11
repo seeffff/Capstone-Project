@@ -39,7 +39,7 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAJg1kP-VENpxpkvvuerZM33qt2o0cPN0A" />
+            android:value="x" />
 
         <activity android:name=".AlarmSoundActivity" />
 
