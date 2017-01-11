@@ -30,6 +30,7 @@
 
     <string name="dialog_delete_title">Are you sure?</string>
     <string name="dialog_delete_text">Are you sure you want to delete this alarm?</string>
+    <string name="dialog_cancel">Cancel</string>
 
     <string name="notif_text">Your alarm to</string>
     <string name="notif_text_two">is running.</string>

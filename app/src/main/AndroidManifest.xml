@@ -21,7 +21,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".AlarmDetailActivity" />
+        <activity android:name=".AlarmDetailActivity"/>
         <activity android:name=".AddAlarmActivity" />
 
         <service
@@ -39,7 +39,7 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="x" />
+            android:value="AIzaSyAJg1kP-VENpxpkvvuerZM33qt2o0cPN0A" />
 
         <activity android:name=".AlarmSoundActivity" />
 

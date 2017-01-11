@@ -66,20 +66,32 @@
             android:columnCount="2">
 
             <TextView
+                android:paddingTop="8dp"
                 android:id="@+id/detail_destination_label"
-                style="@style/ListText"
+                style="@style/ListHeadText"
                 android:text="@string/list_destination_label"/>
 
-            <AutoCompleteTextView
+
+            <LinearLayout android:weightSum="1">
+
+            <EditText
                 android:id="@+id/detail_destination"
                 android:layout_height="wrap_content"
-                android:layout_width="200dp"
+                android:layout_width="190dp"
                 android:contentDescription="@string/cd_destination"/>
 
+                <ImageButton
+                    android:id="@+id/search_button"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:padding="12dp"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_search_black_36dp"/>
 
+            </LinearLayout>
             <TextView
                 android:id="@+id/radius_label"
-                style="@style/ListText"
+                style="@style/ListHeadText"
                 android:text="@string/list_radius_label" />
 
             <LinearLayout
@@ -105,7 +117,7 @@
 
             <TextView
                 android:id="@+id/vibrate_label"
-                style="@style/ListText"
+                style="@style/ListHeadText"
                 android:text="@string/list_vibrate_label" />
 
             <CheckBox
@@ -117,12 +129,13 @@
 
             <TextView
                 android:id="@+id/volume_label"
-                style="@style/ListText"
+                style="@style/ListHeadText"
                 android:text="@string/list_ringtone_label" />
 
             <SeekBar
                 android:id="@+id/ringtone_volume"
                 android:layout_width="200dp"
+                android:paddingTop="8dp"
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/cd_volume"/>
 

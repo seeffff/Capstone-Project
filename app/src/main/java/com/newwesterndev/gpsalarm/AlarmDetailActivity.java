@@ -1,13 +1,13 @@
 package com.newwesterndev.gpsalarm;
 
 import android.appwidget.AppWidgetManager;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
-import android.graphics.Color;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
@@ -15,8 +15,6 @@ import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.Html;
-import android.text.Spanned;
 import android.transition.Fade;
 import android.transition.Transition;
 import android.util.DisplayMetrics;
@@ -25,12 +23,9 @@ import android.view.View;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.Filter;
-import android.widget.Filterable;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -40,13 +35,7 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.PendingResult;
-import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.places.AutocompletePrediction;
-import com.google.android.gms.location.places.Place;
-import com.google.android.gms.location.places.PlaceBuffer;
-import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
@@ -58,8 +47,8 @@ import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.newwesterndev.gpsalarm.alarm.AlarmController;
 import com.newwesterndev.gpsalarm.database.AlarmContract;
-import com.newwesterndev.gpsalarm.utility.Alarm;
-import com.newwesterndev.gpsalarm.utility.PlacesAutocompleteAdapter;
+import com.newwesterndev.gpsalarm.utility.GetPlacesAsync;
+import com.newwesterndev.gpsalarm.utility.PlaceSuggestion;
 import com.newwesterndev.gpsalarm.widget.AlarmWidget;
 
 import java.util.ArrayList;
@@ -69,14 +58,15 @@ import butterknife.ButterKnife;
 
 public class AlarmDetailActivity extends AppCompatActivity implements
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
-        OnMapReadyCallback, AdapterView.OnItemClickListener {
+        OnMapReadyCallback {
 
     @BindView(R.id.mapView) MapView mapView;
     @BindView(R.id.zoom_in) ImageButton zoomInButton;
     @BindView(R.id.zoom_out) ImageButton zoomOutButton;
     @BindView(R.id.details) LinearLayout detailLayout;
     @BindView(R.id.detail_destination_label) TextView destinationLabel;
-    @BindView(R.id.detail_destination) AutoCompleteTextView destinationAuto;
+    @BindView(R.id.detail_destination) EditText destinationAuto;
+    @BindView(R.id.search_button) ImageButton searchButton;
     @BindView(R.id.radius_label) TextView radiusLabel;
     @BindView(R.id.distance_spinner) Spinner distanceSpinner;
     @BindView(R.id.distance_type_spinner) Spinner distanceTypeSpinner;
@@ -89,8 +79,9 @@ public class AlarmDetailActivity extends AppCompatActivity implements
     GoogleApiClient mGoogleApiClient;
     Location mLastLocation;
     LatLngBounds mBounds;
-    LatLng autoPlaceLatLng;
-    private PlacesAutocompleteAdapter mAdapter;
+    GetPlacesAsync mGetPlacesAsync;
+    IntentFilter filter = new IntentFilter();
+    private ArrayList<PlaceSuggestion> mPlaceSuggestions;
     private static final String PROVIDER_NAME = "newwesterndev.alarmdatabase.alarms";
     private static final Uri CONTENT_URI = Uri.parse("content://" + PROVIDER_NAME + "/alarms");
 
@@ -114,16 +105,11 @@ public class AlarmDetailActivity extends AppCompatActivity implements
                     .addConnectionCallbacks(this)
                     .addOnConnectionFailedListener(this)
                     .addApi(LocationServices.API)
-                    .addApi(Places.GEO_DATA_API)
                     .build();
         }
 
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
-
-        mAdapter = new PlacesAutocompleteAdapter(this, mGoogleApiClient, mBounds, null);
-        destinationAuto.setAdapter(mAdapter);
-        destinationAuto.setOnItemClickListener(this);
 
         zoomInButton.setOnClickListener(view -> {
             detailLayout.setVisibility(View.GONE);
@@ -181,7 +167,56 @@ public class AlarmDetailActivity extends AppCompatActivity implements
             }
         });
 
-                createButton.setOnClickListener(view -> createAlarm());
+        createButton.setOnClickListener(view -> createAlarm());
+
+        searchButton.setOnClickListener(view -> {
+
+            String input = destinationAuto.getText().toString();
+            mGetPlacesAsync = new GetPlacesAsync(this, mLastLocation);
+            mGetPlacesAsync.execute(input);
+        });
+
+    }
+
+    BroadcastReceiver suggestionReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            destinationAuto.setText(intent.getStringExtra("Name"));
+            LatLng sLatLng = new LatLng(intent.getDoubleExtra("Lat", 0), intent.getDoubleExtra("Lon", 0));
+            mapView.getMapAsync(googleMap -> {
+                googleMap.clear();
+                googleMap.addMarker(new MarkerOptions().position(sLatLng));
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sLatLng, 15));
+                mLastLocation.setLatitude(intent.getDoubleExtra("Lat", 0));
+                mLastLocation.setLongitude(intent.getDoubleExtra("Lon", 0));
+                drawCircle(googleMap);
+                mapView.onResume();
+            });
+
+            mGetPlacesAsync.closeDialog();
+        }
+    };
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        filter.addAction("getSuggestions");
+        registerReceiver(suggestionReceiver, filter);
+    }
+
+    @Override
+    protected void onPause(){
+        try {
+            unregisterReceiver(suggestionReceiver);
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage().contains("Receiver not registered")) {
+                // Ignore this exception. This is exactly what is desired
+            } else {
+                // unexpected, re-throw
+                throw e;
+            }
+        }
+        super.onPause();
     }
 
     @Override
@@ -363,45 +398,6 @@ public class AlarmDetailActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-
-        final AutocompletePrediction item = mAdapter.getItem(position);
-        final String placeId = item.getPlaceId();
-        final CharSequence primaryText = item.getPrimaryText(null);
-
-        PendingResult<PlaceBuffer> placeResult = Places.GeoDataApi
-                .getPlaceById(mGoogleApiClient, placeId);
-        placeResult.setResultCallback(mUpdatePlaceDetailsCallback);
-
-        Toast.makeText(getApplicationContext(), "Clicked: " + primaryText,
-                Toast.LENGTH_SHORT).show();
-    }
-
-    private ResultCallback<PlaceBuffer> mUpdatePlaceDetailsCallback
-            = new ResultCallback<PlaceBuffer>() {
-        @Override
-        public void onResult(PlaceBuffer places) {
-            if (!places.getStatus().isSuccess()) {
-                places.release();
-                return;
-            }
-            final Place place = places.get(0);
-
-            destinationAuto.setText(place.getName());
-            LatLng autoLatLng = place.getLatLng();
-            mLastLocation.setLongitude(autoLatLng.longitude);
-            mLastLocation.setLatitude(autoLatLng.latitude);
-
-            mapView.getMapAsync(googleMap -> {
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(autoLatLng, 15));
-                drawCircle(googleMap);
-            });
-
-            places.release();
-        }
-    };
-
-    @Override
     public void onConnectionSuspended(int i) {
 
     }
@@ -410,5 +406,6 @@ public class AlarmDetailActivity extends AppCompatActivity implements
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
         Log.e("Failed", "To connect");
     }
+
 
 }
